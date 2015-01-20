@@ -8,7 +8,7 @@ def options(opt):
     opt.load('compiler_c compiler_cxx gnu_dirs')
     opt.load('boost default-compiler-flags doxygen', tooldir=['.waf-tools'])
 
-    ropt = opt.add_option_group('ndn-next-ndnvideo Options')
+    ropt = opt.add_option_group('cpusensor Options')
 
     ropt.add_option('--with-tests', action='store_true', default=False, dest='with_tests',
                     help='''build unit tests''')

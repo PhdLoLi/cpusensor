@@ -55,7 +55,7 @@ main(int argc, char** argv)
                     (ConstDataCallback)bind(&ProducerCallback::processOutgoingData, &proCB, _1));
     
   //listening
-  sensorProducer->setup();
+//  sensorProducer->setup();
 
   while(1)
   {
