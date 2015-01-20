@@ -1,39 +1,88 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
-from waflib import Logs, Configure
+VERSION = '0.1'
+APPNAME = 'cpusensor'
 
-pargs = ['--cflags', '--libs']
+from waflib import Build, Logs, Utils, Task, TaskGen, Configure
 
 def options(opt):
-	opt.load('compiler_cxx compiler_c')
+    opt.load('compiler_c compiler_cxx gnu_dirs')
+    opt.load('boost default-compiler-flags doxygen', tooldir=['.waf-tools'])
+
+    ropt = opt.add_option_group('ndn-next-ndnvideo Options')
+
+    ropt.add_option('--with-tests', action='store_true', default=False, dest='with_tests',
+                    help='''build unit tests''')
+
+    ropt.add_option('--with-examples', action='store_true', default=False, dest='with_examples',
+                    help='''build examples''')
+
 def configure(conf):
-  defaultFlags = ['-std=c++0x', '-std=c++11',
-                  '-stdlib=libc++',   # clang on OSX < 10.9 by default uses gcc's
-                                      # libstdc++, which is not C++11 compatible
-                  '-pedantic', '-Wall']
-  conf.load('compiler_cxx compiler_c')
-  conf.add_supported_cxxflags(defaultFlags)
-  conf.check_cfg(atleast_pkgconfig_version='0.0.0')
-  conf.check_cfg(package='gstreamer-1.0', uselib_store='GSTREAMER', args=pargs)
-  conf.env.LIB_PTHREAD = 'pthread'
+    conf.load("compiler_c compiler_cxx gnu_dirs boost default-compiler-flags")
 
-@Configure.conf
-def add_supported_cxxflags(self, cxxflags):
-    
-    self.start_msg('Checking supported CXXFLAGS')
+    conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'],
+                   uselib_store='NDN_CXX', mandatory=True)
 
-    supportedFlags = []
-    for flag in cxxflags:
-        if self.check_cxx(cxxflags=['-Werror', flag], mandatory=False):
-            supportedFlags += [flag]
+    conf.env.LIB_PTHREAD = 'pthread'
 
-    self.end_msg(' '.join(supportedFlags))
-    self.env.CXXFLAGS = supportedFlags + self.env.CXXFLAGS
+    conf.env.FRAMEWORK = ['IOKit']
+
+    if conf.options.with_tests:
+        conf.env['WITH_TESTS'] = True
+
+    if conf.options.with_examples:
+        conf.env['WITH_EXAMPLES'] = True
+
+    USED_BOOST_LIBS = ['system', 'iostreams', 'filesystem', 'random']
+
+    if conf.env['WITH_TESTS']:
+        USED_BOOST_LIBS += ['unit_test_framework']
+    conf.check_boost(lib=USED_BOOST_LIBS, mandatory=True)
+
+    try:
+        conf.load("doxygen")
+    except:
+        pass
+
+    conf.define('DEFAULT_CONFIG_FILE', '%s/ndn/next-ndnvideo.conf' % conf.env['SYSCONFDIR'])
+
+    conf.write_config_header('src/config.hpp')
 
 def build(bld):
-    for app in bld.path.ant_glob('*.cpp'):
-        bld(features=['cxx', 'cxxprogram'],
-            target = '%s' % (str(app.change_ext('','.cpp'))),
-            source = app,
-            use = 'GSTREAMER PTHREAD',
-            install_path = None,
-            )
+
+    bld(target="producer",
+        features=["cxx", "cxxprogram"],
+        source= "src/producer.cpp src/cpu-temp.cpp src/producer-callback.cpp",
+        use='BOOST NDN_CXX PTHREAD',
+        )
+
+    bld(target="consumer",
+        features=["cxx", "cxxprogram"],
+        source= "src/consumer.cpp src/consumer-callback.cpp",
+        use='BOOST NDN_CXX PTHREAD',
+        )
+      
+    bld(target="server",
+        features=["cxx", "cxxprogram"],
+        source= "src/server.cpp",
+        use='BOOST',
+        )
+
+    bld(target="client",
+        features=["cxx", "cxxprogram"],
+        source= "src/client.cpp",
+        use='BOOST',
+        )
+
+#    bld(target="test",
+#        features=["cxx", "cxxprogram"],
+#        source= "src/test.cpp",
+#        args = ['-pthread'],
+#        )
+
+    # Tests
+#    if bld.env['WITH_TESTS']:
+#	  bld.recurse('tests')
+
+    # Examples
+#    if bld.env['WITH_EXAMPLES']:
+#	  bld.recurse('examples')
