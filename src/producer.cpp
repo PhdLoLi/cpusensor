@@ -66,18 +66,17 @@ main(int argc, char** argv)
    
     cputemp.SMCClose();
   
-    time_t time_now = std::time(0);
     std::string content = std::to_string(temp) ; //"RELIABLE ECHO z";
   
+    time_t time_now = std::time(0);
     std::string time_now_str = std::ctime(&time_now);
     std::cout << "Now time: " << time_now_str << std::endl;
   
-    std::stringstream ss;
-    ss << time_now;
-  //  std::string tt= time_now;
-  //  unsigned long t = time_now;
-//    std::cout << time_now << " seconds since 01-Jan-1970\n" << std::endl;
-    sensorProducer->produce(Name(ss.str()), (uint8_t*)content.c_str(), content.size());
+    uint64_t timestamp = toUnixTimestamp(ndn::time::system_clock::now()).count();
+    std::string timestamp_str = std::to_string(timestamp);
+    std::cout << "Timestamp: " << timestamp_str << std::endl;
+
+    sensorProducer->produce(Name(timestamp_str), (uint8_t*)content.c_str(), content.size());
     printf("%0.1f°C\n",temp);
     printf("------------------------------------------------------------------- END\n\n\n");
       
